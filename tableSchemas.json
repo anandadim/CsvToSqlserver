@@ -1,0 +1,58 @@
+{
+  "SALES_INVOICE_ACCURATE_ONLINE": {
+    "columns": {
+      "Tanggal": "DATE",
+      "No_Faktur": "NVARCHAR(50)",
+      "No_Barang": "NVARCHAR(100)",
+      "Keterangan_Barang": "NVARCHAR(500)",
+      "Kuantitas": "DECIMAL(18,2)",
+      "Unit": "NVARCHAR(20)",
+      "Harga_Satuan": "DECIMAL(18,2)",
+      "Jumlah": "DECIMAL(18,2)",
+      "Gudang": "NVARCHAR(50)",
+      "ID_Pelanggan": "NVARCHAR(20)",
+      "Pelanggan": "NVARCHAR(200)",
+      "Sales": "NVARCHAR(50)",
+      "HP_Pelanggan": "NVARCHAR(20)",
+      "BPP": "DECIMAL(18,2)",
+      "Diskon": "DECIMAL(18,2)",
+      "Nama_Kategori_Barang": "NVARCHAR(50)",
+      "Barang_Jasa": "NVARCHAR(50)",
+      "Detail_Pesanan": "NVARCHAR(500)",
+      "Kategori_Pelanggan": "NVARCHAR(50)"
+    },
+    "primaryKey": ["No_Faktur", "No_Barang"],
+    "indexes": ["Tanggal", "ID_Pelanggan", "Nama_Kategori_Barang"],
+    "columnMapping": {
+      "Tanggal": "Tanggal",
+      "No. Faktur": "No_Faktur",
+      "No. Barang": "No_Barang",
+      "Keterangan Barang": "Keterangan_Barang",
+      "Kuantitas": "Kuantitas",
+      "Unit": "Unit",
+      "Harga Satuan": "Harga_Satuan",
+      "Jumlah": "Jumlah",
+      "Gudang": "Gudang",
+      "ID Pelanggan": "ID_Pelanggan",
+      "Pelanggan": "Pelanggan",
+      "Sales": "Sales",
+      "HP Pelanggan": "HP_Pelanggan",
+      "BPP": "BPP",
+      "Diskon": "Diskon",
+      "Nama Kategori Barang": "Nama_Kategori_Barang",
+      "Barang & Jasa": "Barang_Jasa",
+      "Detail Pesanan": "Detail_Pesanan",
+      "Kategori Pelanggan": "Kategori_Pelanggan"
+    },
+    "numericColumns": ["Kuantitas", "Harga_Satuan", "Jumlah", "BPP", "Diskon"],
+    "dateColumns": ["Tanggal"]
+  },
+  "SNJ_SRP_DETAIL": {
+    "columns": {},
+    "primaryKey": [],
+    "indexes": [],
+    "columnMapping": {},
+    "numericColumns": ["BARCODE", "CUST_PHONE"],
+    "dateColumns": ["SALES_DATE"]
+  }
+}

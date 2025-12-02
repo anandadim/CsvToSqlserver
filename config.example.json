@@ -1,0 +1,34 @@
+{
+  "connections": [
+    {
+      "name": "Database 1",
+      "server": "localhost",
+      "database": "SalesDB1",
+      "username": "sa",
+      "password": "YourPassword",
+      "port": 1433,
+      "enabled": true,
+      "filePattern": "*",
+      "description": "Primary sales database"
+    },
+    {
+      "name": "Database 2",
+      "server": "localhost",
+      "database": "SalesDB2",
+      "username": "sa",
+      "password": "YourPassword",
+      "port": 1433,
+      "enabled": false,
+      "filePattern": "*",
+      "description": "Secondary database (disabled by default)"
+    }
+  ],
+  "autoUpload": {
+    "enabled": true,
+    "watchFolder": "./auto-upload",
+    "processedFolder": "./processed",
+    "failedFolder": "./failed",
+    "maxRetries": 3,
+    "retryDelayMs": 2000
+  }
+}

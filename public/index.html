@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CSV to SQL Server Uploader</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>📊 CSV to SQL Server Uploader</h1>
+    <p class="subtitle">Upload CSV file to SNJ_SRP_DETAIL table</p>
+
+    <!-- Connection String Form -->
+    <div class="card">
+      <h2>Database Connection</h2>
+      <form id="connectionForm">
+        <div class="form-group">
+          <label for="server">Server:</label>
+          <input type="text" id="server" name="server" placeholder="localhost" required>
+        </div>
+
+        <div class="form-group">
+          <label for="database">Database:</label>
+          <input type="text" id="database" name="database" placeholder="MyDatabase" required>
+        </div>
+
+        <div class="form-group">
+          <label for="username">Username:</label>
+          <input type="text" id="username" name="username" placeholder="sa" required>
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password:</label>
+          <input type="password" id="password" name="password" required>
+        </div>
+
+        <div class="form-group">
+          <label for="port">Port:</label>
+          <input type="number" id="port" name="port" placeholder="1433" value="1433">
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <button type="button" class="btn btn-secondary" onclick="testConnection()">
+            Test Connection
+          </button>
+          <button type="button" class="btn btn-clear" onclick="clearConnection()">
+            Clear Saved
+          </button>
+        </div>
+      </form>
+      
+      <div id="connectionStatus" class="status-message"></div>
+    </div>
+
+    <!-- File Upload Form -->
+    <div class="card">
+      <h2>Upload CSV File</h2>
+      <form id="uploadForm" enctype="multipart/form-data">
+        <div class="form-group">
+          <label for="csvFile">Select CSV or XLSX File:</label>
+          <input type="file" id="csvFile" name="csvFile" accept=".csv,.xlsx" required>
+          <small style="color: #666; display: block; margin-top: 5px;">Supported formats: CSV, XLSX</small>
+        </div>
+
+        <button type="submit" class="btn btn-primary">
+          Upload & Insert to Database
+        </button>
+      </form>
+
+      <div id="uploadStatus" class="status-message"></div>
+      <div id="progressBar" class="progress-bar" style="display: none;">
+        <div class="progress-fill"></div>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div id="results" class="card" style="display: none;">
+      <h2>Upload Results</h2>
+      <div id="resultsContent"></div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

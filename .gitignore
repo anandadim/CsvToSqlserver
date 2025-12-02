@@ -1,0 +1,10 @@
+node_modules/
+uploads/
+auto-upload/
+processed/
+failed/
+logs/
+.env
+*.log
+.DS_Store
+config.json

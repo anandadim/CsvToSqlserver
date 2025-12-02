@@ -1,0 +1,12 @@
+node_modules/
+uploads/
+auto-upload/
+processed/
+failed/
+logs/
+config.json
+.env
+*.log
+.DS_Store
+.git/
+.gitignore
