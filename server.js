@@ -118,7 +118,7 @@ function detectTableName(fileName, data) {
   }
   
   if (lowerFileName.includes('snj') || lowerFileName.includes('srp')) {
-    return 'SNJ_SRP_DTL';
+    return 'SNJ_SRP_DETAIL';
   }
   
   if (data.length > 0) {
@@ -130,11 +130,11 @@ function detectTableName(fileName, data) {
     }
     
     if (columns.includes('BILL_NO') || columns.includes('SALES_DATE')) {
-      return 'SNJ_SRP_DTL';
+      return 'SNJ_SRP_DETAIL';
     }
   }
   
-  return 'SNJ_SRP_DTL';
+  return 'SNJ_SRP_DETAIL';
 }
 
 // Connect with retry (same as fileWatcher)
@@ -212,7 +212,7 @@ async function uploadToDatabase(connConfig, data, tableName) {
       }
       
       // Collect unique stores
-      if (tableName === 'SNJ_SRP_DTL' && row.ORG_CODE_NAME) {
+      if (tableName === 'SNJ_SRP_DETAIL' && row.ORG_CODE_NAME) {
         stores.add(row.ORG_CODE_NAME);
       } else if (tableName === 'SALES_INVOICE_ACCURATE_ONLINE' && row.Gudang) {
         stores.add(row.Gudang);

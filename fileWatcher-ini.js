@@ -120,7 +120,7 @@ async function uploadToDatabase(connConfig, data, fileName) {
     const schemaQuery = `
       SELECT COLUMN_NAME, DATA_TYPE 
       FROM INFORMATION_SCHEMA.COLUMNS 
-      WHERE TABLE_NAME = 'SNJ_SRP_DTL'
+      WHERE TABLE_NAME = 'SNJ_SRP_DETAIL'
     `;
     const schemaResult = await pool.request().query(schemaQuery);
     const columnTypes = {};
@@ -174,7 +174,7 @@ async function uploadToDatabase(connConfig, data, fileName) {
         if (storeList.length > 0) {
           const storePlaceholders = storeList.map((_, idx) => `@store${idx}`).join(', ');
           countQuery = `
-            SELECT COUNT(*) as count FROM SNJ_SRP_DTL 
+            SELECT COUNT(*) as count FROM SNJ_SRP_DETAIL 
             WHERE SALES_DATE BETWEEN @minDate AND @maxDate
               AND ORG_CODE_NAME IN (${storePlaceholders})
           `;
@@ -183,7 +183,7 @@ async function uploadToDatabase(connConfig, data, fileName) {
           });
         } else {
           countQuery = `
-            SELECT COUNT(*) as count FROM SNJ_SRP_DTL 
+            SELECT COUNT(*) as count FROM SNJ_SRP_DETAIL 
             WHERE SALES_DATE BETWEEN @minDate AND @maxDate
           `;
         }
@@ -197,7 +197,7 @@ async function uploadToDatabase(connConfig, data, fileName) {
         if (existingCount > 0) {
           logToFile(`MYSTERY: Database says ${existingCount} rows exist, but you say it's empty!`, 'ERROR');
           try {
-            const sampleQuery = `SELECT TOP 3 BILL_NO, ORG_CODE_NAME, SALES_DATE FROM SNJ_SRP_DTL WHERE SALES_DATE BETWEEN @minDate AND @maxDate AND ORG_CODE_NAME IN (@store0)`;
+            const sampleQuery = `SELECT TOP 3 BILL_NO, ORG_CODE_NAME, SALES_DATE FROM SNJ_SRP_DETAIL WHERE SALES_DATE BETWEEN @minDate AND @maxDate AND ORG_CODE_NAME IN (@store0)`;
             const sampleRequest = new sql.Request(transaction);
             sampleRequest.input('minDate', sql.Date, minDate);
             sampleRequest.input('maxDate', sql.Date, maxDate);
@@ -221,7 +221,7 @@ async function uploadToDatabase(connConfig, data, fileName) {
           // Delete by date AND store (safer for multi-store)
           const storePlaceholders = storeList.map((_, idx) => `@store${idx}`).join(', ');
           deleteQuery = `
-            DELETE FROM SNJ_SRP_DTL 
+            DELETE FROM SNJ_SRP_DETAIL 
             WHERE SALES_DATE BETWEEN @minDate AND @maxDate
               AND ORG_CODE_NAME IN (${storePlaceholders})
           `;
@@ -236,7 +236,7 @@ async function uploadToDatabase(connConfig, data, fileName) {
         } else {
           // Fallback: delete by date only
           deleteQuery = `
-            DELETE FROM SNJ_SRP_DTL 
+            DELETE FROM SNJ_SRP_DETAIL 
             WHERE SALES_DATE BETWEEN @minDate AND @maxDate
           `;
           logToFile(`WARNING: No stores detected, deleting by date only!`, 'WARN');
@@ -282,7 +282,7 @@ async function uploadToDatabase(connConfig, data, fileName) {
           const columnNames = validColumns.map(col => `[${col}]`).join(', ');
           const placeholders = validColumns.map((_, idx) => `@param${idx}`).join(', ');
           
-          const query = `INSERT INTO SNJ_SRP_DTL (${columnNames}) VALUES (${placeholders})`;
+          const query = `INSERT INTO SNJ_SRP_DETAIL (${columnNames}) VALUES (${placeholders})`;
           const request = new sql.Request(transaction);
           
           validColumns.forEach((col, idx) => {
