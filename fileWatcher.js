@@ -246,8 +246,26 @@ async function uploadToDatabase(connConfig, data, fileName) {
       columnTypes[col.COLUMN_NAME] = col.DATA_TYPE;
     });
 
+    // Normalize column names (replace spaces with underscores)
+    const normalizedData = data.map(row => {
+      const normalizedRow = {};
+      Object.keys(row).forEach(key => {
+        // Replace spaces with underscore, keep alphanumeric and underscore
+        let normalizedKey = key.trim().replace(/\s+/g, '_');
+        // Remove only problematic special chars, keep letters and numbers
+        normalizedKey = normalizedKey.replace(/[^a-zA-Z0-9_]/g, '_');
+        // Remove multiple consecutive underscores
+        normalizedKey = normalizedKey.replace(/_+/g, '_');
+        // Remove leading/trailing underscores
+        normalizedKey = normalizedKey.replace(/^_+|_+$/g, '');
+        
+        normalizedRow[normalizedKey] = row[key];
+      });
+      return normalizedRow;
+    });
+
     // Map CSV columns to SQL columns
-    const mappedData = data.map(row => mapColumns(row, tableName));
+    const mappedData = normalizedData.map(row => mapColumns(row, tableName));
 
     // Find date range and stores/branches
     let minDate = null;
@@ -282,46 +300,26 @@ async function uploadToDatabase(connConfig, data, fileName) {
     await transaction.begin();
 
     try {
-      // Delete existing data by date range and store/branch
-      if (minDate && maxDate) {
-        const dateColumn = tableName === 'SALES_INVOICE_ACCURATE_ONLINE' ? 'Tanggal' : 'SALES_DATE';
-        const storeColumn = tableName === 'SALES_INVOICE_ACCURATE_ONLINE' ? 'Gudang' : 'ORG_CODE_NAME';
-        
-        let deleteQuery;
-        const deleteRequest = new sql.Request(transaction);
-        deleteRequest.input('minDate', sql.Date, minDate);
-        deleteRequest.input('maxDate', sql.Date, maxDate);
-        
-        if (storeList.length > 0) {
-          // Delete by date AND store (safer for multi-store)
-          const storePlaceholders = storeList.map((_, idx) => `@store${idx}`).join(', ');
-          deleteQuery = `
-            DELETE FROM [${tableName}]
-            WHERE [${dateColumn}] BETWEEN @minDate AND @maxDate
-              AND [${storeColumn}] IN (${storePlaceholders})
-          `;
-          
-          storeList.forEach((store, idx) => {
-            deleteRequest.input(`store${idx}`, sql.NVarChar, store);
-          });
-          
-          logToFile(`Deleting data for stores: ${storeList.join(', ')}`);
-        } else {
-          // Fallback: delete by date only
-          deleteQuery = `
-            DELETE FROM [${tableName}]
-            WHERE [${dateColumn}] BETWEEN @minDate AND @maxDate
-          `;
-          logToFile(`Deleting data by date only (no store filter)`);
-        }
-        
-        const deleteResult = await deleteRequest.query(deleteQuery);
-        logToFile(`Deleted ${deleteResult.rowsAffected[0]} existing rows`);
-      }
+      // TEMPORARY: Skip delete, insert only
+      logToFile(`TEMPORARY MODE: Insert only, no delete`, 'INFO');
 
       // Insert new data
       let successCount = 0;
       let errorCount = 0;
+
+      // Log first row structure for debugging
+      if (mappedData.length > 0) {
+        const firstRow = mappedData[0];
+        const firstRowColumns = Object.keys(firstRow);
+        logToFile(`First row has ${firstRowColumns.length} columns`, 'INFO');
+        logToFile(`Column names: ${firstRowColumns.join(', ')}`, 'INFO');
+        
+        // Check for problematic column names
+        const emptyColumns = firstRowColumns.filter(col => !col || col.trim() === '');
+        if (emptyColumns.length > 0) {
+          logToFile(`WARNING: Found ${emptyColumns.length} empty column names!`, 'WARN');
+        }
+      }
 
       for (let i = 0; i < mappedData.length; i++) {
         const row = mappedData[i];
@@ -330,46 +328,93 @@ async function uploadToDatabase(connConfig, data, fileName) {
           const columns = Object.keys(row);
           const values = Object.values(row);
 
-          const columnNames = columns.map(col => `[${col}]`).join(', ');
-          const placeholders = columns.map((_, idx) => `@param${idx}`).join(', ');
+          // Filter out empty columns (columns with no name)
+          const validColumns = [];
+          const validValues = [];
+          
+          columns.forEach((col, idx) => {
+            if (col && col.trim() !== '') {
+              validColumns.push(col);
+              validValues.push(values[idx]);
+            }
+          });
+
+          // Skip row if no valid columns
+          if (validColumns.length === 0) {
+            logToFile(`Row ${i + 1}: Skipped (no valid columns)`, 'WARN');
+            continue;
+          }
+
+          const columnNames = validColumns.map(col => `[${col}]`).join(', ');
+          const placeholders = validColumns.map((_, idx) => `@param${idx}`).join(', ');
           
           const query = `INSERT INTO [${tableName}] (${columnNames}) VALUES (${placeholders})`;
           const request = new sql.Request(transaction);
           
-          columns.forEach((col, idx) => {
-            let value = values[idx];
+          // Debug logging for problematic rows
+          if (i >= 1554 && i <= 1556) {
+            logToFile(`DEBUG Row ${i+1} Columns: ${validColumns.length} - ${JSON.stringify(validColumns)}`, 'DEBUG');
+            logToFile(`DEBUG Row ${i+1} Query: ${query}`, 'DEBUG');
+          }
+          
+          validColumns.forEach((col, idx) => {
+            let value = validValues[idx];
             const colType = getColumnType(tableName, col);
             const sqlType = columnTypes[col];
             
-            if (value === null || value === undefined || value === '') {
-              request.input(`param${idx}`, sql.NVarChar, null);
+            // Debug logging for problematic rows
+            if (i >= 1554 && i <= 1556) {
+              logToFile(`DEBUG Row ${i+1} Col[${idx}] "${col}": "${value}" (type: ${typeof value})`, 'DEBUG');
+            }
+            
+            // Handle null/undefined/empty values more robustly
+            if (value === null || value === undefined || value === '' || 
+                (typeof value === 'string' && value.trim() === '')) {
+              if (colType === 'numeric') {
+                request.input(`param${idx}`, sql.Numeric, null);
+              } else if (colType === 'date') {
+                request.input(`param${idx}`, sql.Date, null);
+              } else {
+                request.input(`param${idx}`, sql.NVarChar, null);
+              }
               return;
             }
             
             // Handle by column type from schema
-            if (colType === 'numeric') {
-              const numValue = parseNumeric(value);
-              request.input(`param${idx}`, sql.Numeric, numValue);
-            } else if (colType === 'date') {
-              const dateValue = parseDate(value);
-              request.input(`param${idx}`, sql.Date, dateValue);
-            } else if (sqlType && (sqlType.includes('int') || sqlType.includes('numeric') || sqlType.includes('decimal') || sqlType.includes('float'))) {
-              // Fallback: check SQL type
-              const numValue = parseNumeric(value);
-              request.input(`param${idx}`, sql.Numeric, numValue);
-            } else {
-              // String column
-              let stringValue = value.toString();
-              
-              // Handle scientific notation for string columns
-              if (typeof value === 'number' || /[eE][+-]?\d+/.test(stringValue)) {
-                const num = Number(value);
-                if (!isNaN(num)) {
-                  stringValue = num.toFixed(0);
+            try {
+              if (colType === 'numeric') {
+                const numValue = parseNumeric(value);
+                request.input(`param${idx}`, sql.Numeric, numValue);
+              } else if (colType === 'date') {
+                const dateValue = parseDate(value);
+                request.input(`param${idx}`, sql.Date, dateValue);
+              } else if (sqlType && (sqlType.includes('int') || sqlType.includes('numeric') || sqlType.includes('decimal') || sqlType.includes('float'))) {
+                // Fallback: check SQL type
+                const numValue = parseNumeric(value);
+                request.input(`param${idx}`, sql.Numeric, numValue);
+              } else {
+                // String column
+                let stringValue = value.toString();
+                
+                // Handle scientific notation for string columns
+                if (typeof value === 'number' || /[eE][+-]?\d+/.test(stringValue)) {
+                  const num = Number(value);
+                  if (!isNaN(num)) {
+                    stringValue = num.toFixed(0);
+                  }
                 }
+                
+                // Limit string length to prevent overflow
+                if (stringValue.length > 4000) {
+                  stringValue = stringValue.substring(0, 4000);
+                }
+                
+                request.input(`param${idx}`, sql.NVarChar, stringValue);
               }
-              
-              request.input(`param${idx}`, sql.NVarChar, stringValue);
+            } catch (paramErr) {
+              // Fallback: treat as string if type conversion fails
+              logToFile(`Warning: Failed to convert column ${col}, using string fallback`, 'WARN');
+              request.input(`param${idx}`, sql.NVarChar, value ? value.toString() : null);
             }
           });
 
@@ -377,7 +422,22 @@ async function uploadToDatabase(connConfig, data, fileName) {
           successCount++;
         } catch (err) {
           errorCount++;
-          logToFile(`Row ${i + 1} error: ${err.message}`, 'ERROR');
+          
+          // Enhanced error logging - show first 5 errors in detail
+          if (errorCount <= 5) {
+            logToFile(`ERROR Row ${i + 1} Full Details:`, 'ERROR');
+            logToFile(`  Columns (${validColumns.length}): ${validColumns.join(', ')}`, 'ERROR');
+            logToFile(`  Query: ${query}`, 'ERROR');
+            logToFile(`  Error: ${err.message}`, 'ERROR');
+            
+            // Show first few values
+            const sampleValues = validValues.slice(0, 5).map((v, idx) => 
+              `${validColumns[idx]}="${v}"`
+            ).join(', ');
+            logToFile(`  Sample values: ${sampleValues}`, 'ERROR');
+          } else {
+            logToFile(`Row ${i + 1} error: ${err.message}`, 'ERROR');
+          }
         }
       }
 
